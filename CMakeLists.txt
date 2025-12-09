@@ -200,6 +200,8 @@ set(kolourpaint_lib2_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/layers/selections/text/kpTextStyle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/layers/selections/text/kpPreeditText.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/layers/tempImage/kpTempImage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mainWindow/kpDocumentTab.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mainWindow/kpTabWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mainWindow/kpMainWindow_Colors.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mainWindow/kpMainWindow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mainWindow/kpMainWindow_Edit.cpp

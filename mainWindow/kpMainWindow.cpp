@@ -29,6 +29,8 @@
 #include "kpMainWindow.h"
 #include "kpMainWindowPrivate.h"
 
+#include "mainWindow/kpTabWidget.h"
+#include "mainWindow/kpDocumentTab.h"
 #include "layers/selections/image/kpAbstractImageSelection.h"
 #include "environments/commands/kpCommandEnvironment.h"
 #include "environments/tools/kpToolEnvironment.h"
@@ -50,6 +52,7 @@
 #include <KSharedConfig>
 #include <KConfigGroup>
 #include <KLocalizedString>
+#include <KSelectAction>
 
 #include <QMenu>
 #include <QDropEvent>
@@ -232,28 +235,13 @@ void kpMainWindow::init ()
 
     addDockWidget(Qt::BottomDockWidgetArea, d->colorToolBar, Qt::Horizontal);
 
-    d->scrollView = new kpViewScrollableContainer (this);
-    d->scrollView->setObjectName ( QStringLiteral("scrollView" ));
-
-    connect (d->scrollView, &kpViewScrollableContainer::beganDocResize,
-             this, &kpMainWindow::slotBeganDocResize);
-
-    connect (d->scrollView, &kpViewScrollableContainer::continuedDocResize,
-             this, &kpMainWindow::slotContinuedDocResize);
-
-    connect (d->scrollView, &kpViewScrollableContainer::cancelledDocResize,
-             this, &kpMainWindow::slotCancelledDocResize);
-
-    connect (d->scrollView, &kpViewScrollableContainer::endedDocResize,
-             this, &kpMainWindow::slotEndedDocResize);
-
-    connect (d->scrollView, &kpViewScrollableContainer::statusMessageChanged,
-             this, &kpMainWindow::slotDocResizeMessageChanged);
-
-    connect (d->scrollView, &kpViewScrollableContainer::contentsMoved,
-             this, &kpMainWindow::slotScrollViewAfterScroll);
-
-    setCentralWidget (d->scrollView);
+    d->tabWidget = new kpTabWidget(this, this);
+    connect(d->tabWidget, static_cast<void (kpTabWidget::*)(int, kpDocument*)>(&kpTabWidget::currentTabChanged), 
+            this, static_cast<void (kpMainWindow::*)(int, kpDocument*)>(&kpMainWindow::switchToTab));
+    connect(d->tabWidget, &kpTabWidget::tabCloseRequested,
+            this, static_cast<void (kpMainWindow::*)(int)>(&kpMainWindow::slotCloseTab));
+    
+    setCentralWidget (d->tabWidget);
 
     //
     // set initial pos/size of GUI
@@ -607,21 +595,16 @@ void kpMainWindow::setDocument (kpDocument *newDoc)
     {
     #if DEBUG_KP_MAIN_WINDOW
         qCDebug(kpLogMainWindow) << "\treparenting doc that may have been created into a"
-                  << " different mainWindiow";
+                  << " different mainWindow";
     #endif
         d->document->setEnviron (documentEnvironment ());
 
-        d->viewManager = new kpViewManager (this);
-
-        d->mainView = new kpZoomedView (d->document, d->toolToolBar, d->viewManager,
-                                       nullptr/*buddyView*/,
-                                       d->scrollView,
-                                       d->scrollView->viewport ());
-        d->mainView->setObjectName ( QStringLiteral("mainView" ));
-
-        d->viewManager->registerView (d->mainView);
-        d->scrollView->setView (d->mainView);
-        d->mainView->show ();
+        if (d->tabWidget) {
+            kpDocumentTab *docTab = createDocumentTab(d->document);
+            int index = d->tabWidget->addTab(docTab);
+            d->tabWidget->setCurrentTab(index);
+            switchToTab(index);
+        }
 
     #if DEBUG_KP_MAIN_WINDOW
         qCDebug(kpLogMainWindow) << "\thooking up document signals";
@@ -894,15 +877,22 @@ void kpMainWindow::moveEvent (QMoveEvent * /*e*/)
 // private slot
 void kpMainWindow::slotUpdateCaption ()
 {
-    if (d->document)
-    {
-        setCaption (d->configShowPath ? d->document->prettyUrl ()
-                                     : d->document->prettyFilename (),
-                    d->document->isModified ());
+    if (d->document) {
+        QString caption = d->configShowPath ? d->document->prettyUrl ()
+                                            : d->document->prettyFilename ();
+        bool modified = d->document->isModified();
+        
+        if (!caption.isEmpty()) {
+            setWindowTitle(QString("%1%2 - KolourPaint Tabs")
+                          .arg(caption)
+                          .arg(modified ? " [modified]" : ""));
+        }
+        else {
+            setWindowTitle("KolourPaint Tabs");
+        }
     }
-    else
-    {
-        setCaption (QString(), false);
+    else {
+        setWindowTitle("KolourPaint Tabs");
     }
 }
 
@@ -915,6 +905,200 @@ void kpMainWindow::slotDocumentRestored ()
         d->document->setModified (false);
     }
     slotUpdateCaption ();
+}
+
+//---------------------------------------------------------------------
+
+// ------------------------ MAIN TAB MANAGEMENT SECTION -----------------------
+
+kpTabWidget *kpMainWindow::tabWidget() const
+{
+    return d->tabWidget;
+}
+
+kpDocumentTab *kpMainWindow::createDocumentTab(kpDocument *doc)
+{
+    auto *scrollView = new kpViewScrollableContainer(this);
+    scrollView->setObjectName(QStringLiteral("scrollView"));
+    
+    connect(scrollView, &kpViewScrollableContainer::beganDocResize,
+            this, &kpMainWindow::slotBeganDocResize);
+    connect(scrollView, &kpViewScrollableContainer::continuedDocResize,
+            this, &kpMainWindow::slotContinuedDocResize);
+    connect(scrollView, &kpViewScrollableContainer::cancelledDocResize,
+            this, &kpMainWindow::slotCancelledDocResize);
+    connect(scrollView, &kpViewScrollableContainer::endedDocResize,
+            this, &kpMainWindow::slotEndedDocResize);
+    connect(scrollView, &kpViewScrollableContainer::statusMessageChanged,
+            this, &kpMainWindow::slotDocResizeMessageChanged);
+    connect(scrollView, &kpViewScrollableContainer::contentsMoved,
+            this, &kpMainWindow::slotScrollViewAfterScroll);
+    
+    auto *viewManager = new kpViewManager(this);
+    
+    auto *mainView = new kpZoomedView(doc, d->toolToolBar, viewManager,
+                                     nullptr/*buddyView*/,
+                                     scrollView,
+                                     scrollView->viewport());
+    mainView->setObjectName(QStringLiteral("mainView"));
+    
+    viewManager->registerView(mainView);
+    scrollView->setView(mainView);
+    mainView->show();
+    
+    connect(doc, &kpDocument::contentsChanged,
+            viewManager, &kpViewManager::updateViews);
+    connect(doc, static_cast<void (kpDocument::*)(int, int)>(&kpDocument::sizeChanged),
+            viewManager, &kpViewManager::adjustViewsToEnvironment);
+    
+    auto *thumbnail = new kpThumbnail(this);
+    auto *docTab = new kpDocumentTab(doc, scrollView, mainView, viewManager, thumbnail);
+    
+    return docTab;
+}
+
+void kpMainWindow::switchToTab(int index, kpDocument *deletingDoc)
+{
+    kpDocumentTab *docTab = d->tabWidget->documentTabAt(index);
+    if (!docTab) {
+        return;
+    }
+    
+    kpDocumentTab *previousTab = nullptr;
+    kpDocument *previousDocument = d->document;
+    
+    if (previousDocument && previousDocument != docTab->document() && previousDocument != deletingDoc) {
+        for (int i = 0; i < d->tabWidget->count(); ++i) {
+            kpDocumentTab *tab = d->tabWidget->documentTabAt(i);
+            if (tab && tab != docTab && tab->document() == previousDocument) {
+                previousTab = tab;
+                break;
+            }
+        }
+    }
+    
+    if (previousTab && d->commandHistory) {
+        int restoredPos;
+        d->commandHistory->saveState(previousTab->undoCommandList(), 
+                                     previousTab->redoCommandList(),
+                                     restoredPos);
+        previousTab->setDocumentRestoredPosition(restoredPos);
+        
+        if (d->mainView) {
+            previousTab->setZoomLevel(d->mainView->zoomLevelX());
+        }
+    }
+    
+    if (previousDocument) {
+        disconnect(previousDocument, nullptr, this, nullptr);
+        disconnect(previousDocument, nullptr, d->actionCut, nullptr);
+        disconnect(previousDocument, nullptr, d->actionCopy, nullptr);
+        disconnect(previousDocument, nullptr, d->actionDelete, nullptr);
+        disconnect(previousDocument, nullptr, d->actionDeselect, nullptr);
+        disconnect(previousDocument, nullptr, d->actionCopyToFile, nullptr);
+        if (d->commandHistory) {
+            disconnect(previousDocument, nullptr, d->commandHistory, nullptr);
+        }
+    }
+    
+    if (d->document && tool()) {
+        toolEndShape();
+    }
+    
+    d->document = docTab->document();
+    d->scrollView = docTab->scrollView();
+    d->mainView = docTab->mainView();
+    d->viewManager = docTab->viewManager();
+    d->thumbnail = docTab->thumbnail();
+    
+    if (d->commandHistory) {
+        d->commandHistory->restoreState(docTab->undoCommandList(),
+                                        docTab->redoCommandList(),
+                                        docTab->documentRestoredPosition());
+    }
+    
+    if (d->document) {
+        connect(d->document, &kpDocument::selectionEnabled,
+                d->actionCut, &QAction::setEnabled);
+        connect(d->document, &kpDocument::selectionEnabled,
+                d->actionCopy, &QAction::setEnabled);
+        connect(d->document, &kpDocument::selectionEnabled,
+                d->actionDelete, &QAction::setEnabled);
+        connect(d->document, &kpDocument::selectionEnabled,
+                d->actionDeselect, &QAction::setEnabled);
+        connect(d->document, &kpDocument::selectionEnabled,
+                d->actionCopyToFile, &QAction::setEnabled);
+        
+        connect(d->document, &kpDocument::selectionEnabled,
+                this, &kpMainWindow::slotImageMenuUpdateDueToSelection);
+        connect(d->document, &kpDocument::selectionIsTextChanged,
+                this, &kpMainWindow::slotImageMenuUpdateDueToSelection);
+        
+        connect(d->document, &kpDocument::documentOpened,
+                this, &kpMainWindow::recalculateStatusBar);
+        connect(d->document, static_cast<void (kpDocument::*)(const QSize&)>(&kpDocument::sizeChanged),
+                this, &kpMainWindow::setStatusBarDocSize);
+        
+        connect(d->document, &kpDocument::documentModified,
+                this, &kpMainWindow::slotUpdateCaption);
+        connect(d->document, &kpDocument::documentOpened,
+                this, &kpMainWindow::slotUpdateCaption);
+        connect(d->document, &kpDocument::documentSaved,
+                this, &kpMainWindow::slotUpdateCaption);
+        
+        connect(d->document, &kpDocument::documentSaved,
+                this, &kpMainWindow::slotEnableReload);
+        connect(d->document, &kpDocument::documentSaved,
+                this, &kpMainWindow::slotEnableSettingsShowPath);
+        
+        if (d->commandHistory) {
+            connect(d->commandHistory, &kpCommandHistory::documentRestored,
+                    this, &kpMainWindow::slotDocumentRestored);
+            connect(d->document, &kpDocument::documentSaved,
+                    d->commandHistory, &kpCommandHistory::documentSaved);
+        }
+    }
+    
+    slotImageMenuUpdateDueToSelection();
+    recalculateStatusBar();
+    slotUpdateCaption();
+    slotEnableReload();
+    
+    if (d->mainView) {
+        int savedZoom = docTab->zoomLevel();
+        if (d->mainView->zoomLevelX() != savedZoom) {
+            d->mainView->setZoomLevel(savedZoom, savedZoom);
+        }
+        
+        int index = 0;
+        for (int i = 0; i < d->zoomList.count(); ++i) {
+            if (d->zoomList[i] == savedZoom) {
+                index = i;
+                break;
+            }
+        }
+        d->actionZoom->setCurrentItem(index);    
+        setStatusBarZoom(savedZoom);
+    }
+    
+    if (d->document) {
+        d->actionCopy->setEnabled(d->document->selection());
+        d->actionCut->setEnabled(d->document->selection());
+        d->actionDeselect->setEnabled(d->document->selection());
+        d->actionDelete->setEnabled(d->document->selection());
+        d->actionCopyToFile->setEnabled(d->document->selection());
+    }
+    
+    if (tool()) {
+        tool()->begin();
+    }
+}
+
+void kpMainWindow::slotTabChanged()
+{
+    int index = d->tabWidget->currentIndex();
+    switchToTab(index, nullptr);
+    slotUpdateCaption();
 }
 
 //---------------------------------------------------------------------

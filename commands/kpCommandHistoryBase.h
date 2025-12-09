@@ -115,6 +115,8 @@ public:
     kpCommand *nextRedoCommand () const;
 
     void setNextUndoCommand (kpCommand *command);
+    void saveState(QList<kpCommand *> &undoList, QList<kpCommand *> &redoList, int &restoredPos);
+    void restoreState(QList<kpCommand *> &undoList, QList<kpCommand *> &redoList, int restoredPos);
 
 public slots:
     virtual void documentSaved ();

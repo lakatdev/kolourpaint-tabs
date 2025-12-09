@@ -63,12 +63,15 @@ class kpCommandHistory;
 class kpTool;
 class kpToolText;
 class SaneDialog;
+class kpTabWidget;
+class kpDocumentTab;
 
 
 struct kpMainWindowPrivate
 {
   kpMainWindowPrivate ()
     : isFullyConstructed(false),
+      tabWidget(nullptr),
       scrollView(nullptr),
       mainView(nullptr),
       thumbnail(nullptr),
@@ -144,6 +147,8 @@ struct kpMainWindowPrivate
       actionMail(nullptr),
       actionClose(nullptr),
       actionQuit(nullptr),
+      actionNewTab(nullptr),
+      actionCloseTab(nullptr),
 
       scanDialog(nullptr),
 
@@ -257,6 +262,7 @@ struct kpMainWindowPrivate
 
   bool isFullyConstructed;
 
+  kpTabWidget *tabWidget;
   kpViewScrollableContainer *scrollView;
   kpZoomedView *mainView;
   kpThumbnail *thumbnail;
@@ -322,7 +328,8 @@ struct kpMainWindowPrivate
           *actionReload,
           *actionPrint, *actionPrintPreview,
           *actionMail,
-          *actionClose, *actionQuit;
+          *actionClose, *actionQuit,
+          *actionNewTab, *actionCloseTab;
 
   SaneDialog *scanDialog;
 

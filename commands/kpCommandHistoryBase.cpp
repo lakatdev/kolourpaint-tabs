@@ -700,6 +700,32 @@ void kpCommandHistoryBase::setNextUndoCommand (kpCommand *command)
     trimCommandListsUpdateActions ();
 }
 
+// public
+void kpCommandHistoryBase::saveState(QList<kpCommand *> &undoList, QList<kpCommand *> &redoList, int &restoredPos)
+{
+    undoList = m_undoCommandList;
+    redoList = m_redoCommandList;
+    restoredPos = m_documentRestoredPosition;
+    
+    m_undoCommandList.clear();
+    m_redoCommandList.clear();
+}
+
+// public  
+void kpCommandHistoryBase::restoreState(QList<kpCommand *> &undoList, QList<kpCommand *> &redoList, int restoredPos)
+{
+    m_undoCommandList.clear();
+    m_redoCommandList.clear();
+    
+    m_undoCommandList = undoList;
+    m_redoCommandList = redoList;
+    m_documentRestoredPosition = restoredPos;
+    
+    undoList.clear();
+    redoList.clear();
+    
+    updateActions();
+}
 
 // public slot virtual
 void kpCommandHistoryBase::documentSaved ()

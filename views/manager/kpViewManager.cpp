@@ -133,6 +133,7 @@ void kpViewManager::unregisterView (kpView *view)
 // public
 void kpViewManager::unregisterAllViews ()
 {
+    d->viewUnderCursor = nullptr;
     d->views.clear ();
 }
 

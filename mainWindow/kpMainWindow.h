@@ -73,6 +73,8 @@ class kpToolSelectionEnvironment;
 class kpToolToolBar;
 class kpTransformDialogEnvironment;
 class kpAbstractSelection;
+class kpTabWidget;
+class kpDocumentTab;
 
 class kpMainWindow : public KXmlGuiWindow
 {
@@ -92,6 +94,11 @@ public:
     kpMainWindow (kpDocument *newDoc);
 
     void finalizeGUI(KXMLGUIClient *client) override;
+
+public:
+    kpTabWidget *tabWidget() const;
+    kpDocumentTab *createDocumentTab(kpDocument *doc);
+    void switchToTab(int index, kpDocument *deletingDoc = nullptr);
 
 private:
     void readGeneralSettings ();
@@ -297,6 +304,10 @@ private:
 
 private slots:
     void slotNew ();
+    void slotNewTab ();
+    void slotCloseTab ();
+    void slotCloseTab (int index);
+    void slotTabChanged ();
 
 private:
     QSize defaultDocSize () const;

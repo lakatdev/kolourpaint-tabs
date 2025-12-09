@@ -50,6 +50,8 @@
 #include "generic/kpWidgetMapper.h"
 #include "views/kpZoomedView.h"
 #include "views/kpZoomedThumbnailView.h"
+#include "mainWindow/kpDocumentTab.h"
+#include "mainWindow/kpTabWidget.h"
 
 static int ZoomLevelFromString (const QString &stringIn)
 {
@@ -282,6 +284,13 @@ void kpMainWindow::zoomToPost ()
     }
 
     setStatusBarZoom (d->mainView ? d->mainView->zoomLevelX () : 0);
+    
+    if (d->mainView && d->tabWidget) {
+        kpDocumentTab *currentTab = d->tabWidget->currentDocumentTab();
+        if (currentTab) {
+            currentTab->setZoomLevel(d->mainView->zoomLevelX());
+        }
+    }
 
 #if DEBUG_KP_MAIN_WINDOW && 1
     qCDebug(kpLogMainWindow) << "kpMainWindow::zoomToPost() done";

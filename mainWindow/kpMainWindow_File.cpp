@@ -29,7 +29,8 @@
 
 #include "kpMainWindow.h"
 #include "kpMainWindowPrivate.h"
-
+#include "kpDocumentTab.h"
+#include "kpTabWidget.h"
 #include <QAction>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -89,6 +90,22 @@ void kpMainWindow::setupFileMenuActions ()
 
     d->actionNew = KStandardAction::openNew (this, SLOT (slotNew()), ac);
     d->actionOpen = KStandardAction::open (this, SLOT (slotOpen()), ac);
+
+//--------------------------  tabs  -----------------------------
+
+    d->actionNewTab = ac->addAction(QStringLiteral("file_new_tab"));
+    d->actionNewTab->setText(i18n("New &Tab"));
+    d->actionNewTab->setIcon(QIcon::fromTheme(QStringLiteral("tab-new")));
+    ac->setDefaultShortcut(d->actionNewTab, Qt::CTRL + Qt::Key_T);
+    connect(d->actionNewTab, &QAction::triggered, this, &kpMainWindow::slotNewTab);
+
+    d->actionCloseTab = ac->addAction(QStringLiteral("file_close_tab"));
+    d->actionCloseTab->setText(i18n("&Close Tab"));
+    d->actionCloseTab->setIcon(QIcon::fromTheme(QStringLiteral("tab-close")));
+    ac->setDefaultShortcut(d->actionCloseTab, Qt::CTRL + Qt::Key_W);
+    connect(d->actionCloseTab, &QAction::triggered, [this]() { slotCloseTab(); });
+
+//-----------------------------------------------------------------------------
 
     d->actionOpenRecent = KStandardAction::openRecent(this, &kpMainWindow::slotOpenRecent, ac);
     connect(d->actionOpenRecent, &KRecentFilesAction::recentListCleared, this, &kpMainWindow::slotRecentListCleared);
@@ -266,18 +283,95 @@ void kpMainWindow::addRecentURL (const QUrl &url_)
 void kpMainWindow::slotNew ()
 {
     toolEndShape ();
+    slotNewTab();
+}
 
-    if (d->document && !d->configOpenImagesInSameWindow)
-    {
-        // A document -- empty or otherwise -- is open.
-        // Force open a new window.  In contrast, open() might not open
-        // a new window in this case.
-        auto *win = new kpMainWindow ();
-        win->show ();
+//---------------------------------------------------------------------
+
+// private slot
+void kpMainWindow::slotNewTab()
+{
+    toolEndShape();
+    auto *doc = new kpDocument(defaultDocSize().width(), defaultDocSize().height(), documentEnvironment());
+
+    doc->setModified(false);
+    kpDocumentTab *docTab = createDocumentTab(doc);
+
+    d->document = docTab->document();
+    d->scrollView = docTab->scrollView();
+    d->mainView = docTab->mainView();
+    d->viewManager = docTab->viewManager();
+    d->thumbnail = docTab->thumbnail();
+    
+    int index = d->tabWidget->addTab(docTab);
+    d->tabWidget->setCurrentTab(index);
+    switchToTab(index, nullptr);
+    
+    if (d->commandHistory) {
+        d->commandHistory->clear();
     }
-    else
-    {
-        open (QUrl (), true/*create an empty doc*/);
+}
+
+//---------------------------------------------------------------------
+
+// private slot
+void kpMainWindow::slotCloseTab()
+{
+    slotCloseTab(d->tabWidget->currentTabIndex());
+}
+
+//---------------------------------------------------------------------
+
+// private slot
+void kpMainWindow::slotCloseTab(int index)
+{
+    static bool isClosing = false;
+    if (isClosing) {
+        return;
+    }
+    
+    if (index < 0 || index >= d->tabWidget->tabCount()) {
+        return;
+    }
+    
+    kpDocumentTab *docTab = d->tabWidget->documentTabAt(index);
+    if (!docTab) {
+        return;
+    }
+    
+    kpDocument *doc = docTab->document();
+    
+    if (doc && doc->isModified()) {
+        d->tabWidget->setCurrentTab(index);
+        switchToTab(index);
+        
+        int result = KMessageBox::warningTwoActionsCancel(this,
+            i18n("The document \"%1\" has been modified.\n"
+                 "Do you want to save it?", doc->prettyFilename()),
+            QString()/*caption*/,
+            KStandardGuiItem::save(), KStandardGuiItem::discard());
+        
+        if (result == KMessageBox::Cancel) {
+            return;
+        }
+        
+        if (result == KMessageBox::PrimaryAction) {
+            isClosing = true;
+            bool saveSuccess = slotSave();
+            isClosing = false;
+            
+            if (!saveSuccess) {
+                return;
+            }
+        }
+    }
+    
+    isClosing = true;
+    d->tabWidget->removeTab(index, doc);
+    isClosing = false;
+    
+    if (d->tabWidget->tabCount() == 0) {
+        slotNewTab();
     }
 }
 
