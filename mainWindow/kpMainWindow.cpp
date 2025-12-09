@@ -554,21 +554,20 @@ void kpMainWindow::setDocument (kpDocument *newDoc)
     delete d->mainView; d->mainView = nullptr;
     slotDestroyThumbnail ();
 
-    // viewManager will die and so will the selection
     d->actionCopy->setEnabled (false);
     d->actionCut->setEnabled (false);
     d->actionDelete->setEnabled (false);
     d->actionDeselect->setEnabled (false);
     d->actionCopyToFile->setEnabled (false);
 
-    delete d->viewManager; d->viewManager = nullptr;
+    d->viewManager = nullptr;
 
 #if DEBUG_KP_MAIN_WINDOW
     qCDebug(kpLogMainWindow) << "\tdestroying document";
     qCDebug(kpLogMainWindow) << "\t\td->document=" << d->document;
 #endif
-    // destroy current document
-    delete d->document;
+    
+    kpDocument *oldDoc = d->document;
     d->document = newDoc;
 
 
@@ -600,10 +599,29 @@ void kpMainWindow::setDocument (kpDocument *newDoc)
         d->document->setEnviron (documentEnvironment ());
 
         if (d->tabWidget) {
-            kpDocumentTab *docTab = createDocumentTab(d->document);
-            int index = d->tabWidget->addTab(docTab);
-            d->tabWidget->setCurrentTab(index);
-            switchToTab(index);
+            if (d->tabWidget->tabCount() > 0) {
+                int currentIndex = d->tabWidget->currentIndex();
+                kpDocumentTab *oldTab = d->tabWidget->documentTabAt(currentIndex);
+                
+                kpDocumentTab *newTab = createDocumentTab(d->document);
+                if (oldTab) {
+                    oldTab->setDeleteDocument(false);
+                }
+                
+                d->tabWidget->removeTab(currentIndex, oldDoc);
+                delete oldDoc;
+                
+                d->tabWidget->insertTab(currentIndex, newTab);
+                d->tabWidget->setCurrentTab(currentIndex);
+                switchToTab(currentIndex, nullptr);
+            }
+            else {
+                delete oldDoc;
+                kpDocumentTab *docTab = createDocumentTab(d->document);
+                int index = d->tabWidget->addTab(docTab);
+                d->tabWidget->setCurrentTab(index);
+                switchToTab(index, nullptr);
+            }
         }
 
     #if DEBUG_KP_MAIN_WINDOW

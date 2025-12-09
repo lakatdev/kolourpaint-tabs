@@ -19,6 +19,7 @@ kpDocumentTab::kpDocumentTab(kpDocument *doc,
     , m_thumbnail(thumbnail)
     , m_documentRestoredPosition(0)
     , m_zoomLevel(100)
+    , m_deleteDocument(true)
 {
 }
 
@@ -31,17 +32,16 @@ kpDocumentTab::~kpDocumentTab()
     
     if (m_viewManager) {
         m_viewManager->unregisterAllViews();
+        delete m_viewManager;
+        m_viewManager = nullptr;
     }
     
-    delete m_thumbnail;
-    m_thumbnail = nullptr;
-    delete m_mainView;
     m_mainView = nullptr;
-    delete m_viewManager;
-    m_viewManager = nullptr;
-    delete m_scrollView;
+    m_thumbnail = nullptr;
     m_scrollView = nullptr;
-    delete m_document;
+    if (m_deleteDocument) {
+        delete m_document;
+    }
     m_document = nullptr;
 }
 

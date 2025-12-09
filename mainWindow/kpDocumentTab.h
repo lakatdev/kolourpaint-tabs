@@ -25,6 +25,7 @@ public:
     ~kpDocumentTab();
 
     kpDocument *document() const { return m_document; }
+    void setDocument(kpDocument *doc) { m_document = doc; }
     kpViewScrollableContainer *scrollView() const { return m_scrollView; }
     kpZoomedView *mainView() const { return m_mainView; }
     kpViewManager *viewManager() const { return m_viewManager; }
@@ -37,6 +38,8 @@ public:
     
     int zoomLevel() const { return m_zoomLevel; }
     void setZoomLevel(int zoom) { m_zoomLevel = zoom; }
+    
+    void setDeleteDocument(bool deleteDoc) { m_deleteDocument = deleteDoc; }
 
     QString title() const;
 
@@ -52,6 +55,7 @@ private:
     int m_documentRestoredPosition;
     
     int m_zoomLevel;
+    bool m_deleteDocument;
 };
 
 #endif

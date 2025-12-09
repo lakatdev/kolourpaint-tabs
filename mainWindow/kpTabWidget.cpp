@@ -57,6 +57,28 @@ int kpTabWidget::addTab(kpDocumentTab *docTab)
     return index;
 }
 
+void kpTabWidget::insertTab(int index, kpDocumentTab *docTab)
+{
+    if (!docTab) {
+        return;
+    }
+
+    m_tabs.insert(index, docTab);
+    
+    QTabWidget::insertTab(index, docTab->scrollView(), docTab->title());
+    
+    if (m_previousIndex < 0) {
+        m_previousIndex = 0;
+    }
+    
+    if (docTab->document()) {
+        connect(docTab->document(), &kpDocument::documentSaved,
+                this, &kpTabWidget::updateCurrentTabTitle);
+        connect(docTab->document(), &kpDocument::documentModified,
+                this, &kpTabWidget::updateCurrentTabTitle);
+    }
+}
+
 void kpTabWidget::removeTab(int index, kpDocument *deletingDoc)
 {
     if (index < 0 || index >= m_tabs.count()) {

@@ -18,6 +18,7 @@ public:
     ~kpTabWidget() override;
 
     int addTab(kpDocumentTab *docTab);
+    void insertTab(int index, kpDocumentTab *docTab);
     void removeTab(int index, kpDocument *deletingDoc = nullptr);
     int currentTabIndex() const;
     void setCurrentTab(int index);
