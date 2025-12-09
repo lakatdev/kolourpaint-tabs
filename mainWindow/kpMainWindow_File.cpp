@@ -447,18 +447,18 @@ bool kpMainWindow::shouldOpen ()
 // private
 void kpMainWindow::setDocumentChoosingWindow (kpDocument *doc)
 {
-    // Want new window?
-    if (d->document && !d->document->isEmpty () &&
-        !d->configOpenImagesInSameWindow)
+    if (d->document && d->document->isEmpty())
     {
-        // Send doc to new window.
-        auto *win = new kpMainWindow (doc);
-        win->show ();
+        setDocument (doc);
     }
     else
     {
-        // (sets up views, doc signals)
-        setDocument (doc);
+        if (d->tabWidget) {
+            kpDocumentTab *docTab = createDocumentTab(doc);
+            int index = d->tabWidget->addTab(docTab);
+            d->tabWidget->setCurrentTab(index);
+            switchToTab(index, nullptr);
+        }
     }
 }
 
