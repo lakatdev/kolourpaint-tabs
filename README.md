@@ -1,3 +1,11 @@
+### KolourPaint Tabs
+
+This is a fork of the beloved KolourPaint implementing tabs. Thanks to those, there is no need for opening tens of windows of KolourPaint at once now when editing something a bit more complex.
+
+This fork is still under development, probably has many bugs regarding those tabs.
+
+*2025-12-09*
+
 
 http://www.kolourpaint.org/
 
