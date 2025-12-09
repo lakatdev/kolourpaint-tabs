@@ -901,16 +901,14 @@ void kpMainWindow::slotUpdateCaption ()
         bool modified = d->document->isModified();
         
         if (!caption.isEmpty()) {
-            setWindowTitle(QString("%1%2 - KolourPaint Tabs")
-                          .arg(caption)
-                          .arg(modified ? " [modified]" : ""));
+            setCaption(caption, modified);
         }
         else {
-            setWindowTitle("KolourPaint Tabs");
+            setCaption(QString());
         }
     }
     else {
-        setWindowTitle("KolourPaint Tabs");
+        setCaption(QString());
     }
 }
 

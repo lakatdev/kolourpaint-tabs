@@ -51,7 +51,7 @@ int main(int argc, char *argv [])
   KAboutData aboutData
   (
     QStringLiteral("kolourpaint"),
-    i18n("KolourPaint"),
+    i18n("KolourPaint Tabs"),
     QStringLiteral(KOLOURPAINT_VERSION_STRING),
     i18n("Paint Program by KDE"),
     KAboutLicense::Custom,
