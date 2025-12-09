@@ -4,6 +4,9 @@ This is a fork of the beloved KolourPaint implementing tabs. Thanks to those, th
 
 This fork is still under development, probably has many bugs regarding those tabs.
 
+![Tabs window](tabs-window.png)
+*KolourPaint window visible with the tabs open*
+
 *2025-12-09*
 
 
