@@ -458,6 +458,7 @@ void kpMainWindow::setDocumentChoosingWindow (kpDocument *doc)
             int index = d->tabWidget->addTab(docTab);
             d->tabWidget->setCurrentTab(index);
             switchToTab(index, nullptr);
+            enableDocumentActions(true);
         }
     }
 }
